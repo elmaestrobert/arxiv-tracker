@@ -1,0 +1,54 @@
+name: Fetch arXiv AI Agents Papers
+
+# ── Schedule ─────────────────────────────────────────────────────────────────
+# Runs at 08:00 AM Pacific Time (PDT = UTC-7 → 15:00 UTC)
+# Note: GitHub Actions runs in UTC. Adjust cron if your timezone changes.
+#   PDT (Mar–Nov):  0 15 * * *  → 8:00 AM PT
+#   PST (Nov–Mar):  0 16 * * *  → 8:00 AM PT
+on:
+  schedule:
+    - cron: "0 15 * * *"   # 08:00 AM PDT (UTC-7)
+  workflow_dispatch:        # ← allows you to run manually from the Actions tab
+
+# ── Permissions ──────────────────────────────────────────────────────────────
+permissions:
+  contents: write           # needed to commit & push CSV + HTML
+
+# ── Job ───────────────────────────────────────────────────────────────────────
+jobs:
+  fetch-and-deploy:
+    name: Fetch papers & update site
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Check out the repo
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Set up Python
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      # 3. Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install arxiv
+
+      # 4. Run the fetch script
+      - name: Fetch arXiv papers
+        run: python scripts/fetch_arxiv.py
+
+      # 5. Commit & push generated files
+      - name: Commit and push changes
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/papers.csv docs/index.html
+          # Exit 0 gracefully if nothing changed (e.g., weekend / no new papers)
+          git diff --staged --quiet && echo "No changes to commit." || \
+            git commit -m "📄 Update arXiv papers — $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push
