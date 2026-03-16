@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Agents — Daily arXiv Papers</title>
+  <style>
+    :root {
+      --bg: #f0f2f5;
+      --card: #ffffff;
+      --primary: #5b6af0;
+      --primary-dark: #4150d8;
+      --text: #1a1d2e;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --badge-ai: #dbeafe;
+      --badge-ai-text: #1d4ed8;
+      --badge-ma: #dcfce7;
+      --badge-ma-text: #15803d;
+      --badge-lg: #fef3c7;
+      --badge-lg-text: #92400e;
+      --badge-other: #f3e8ff;
+      --badge-other-text: #6b21a8;
+      --radius: 12px;
+      --shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.05);
+      --shadow-hover: 0 4px 16px rgba(91,106,240,.18), 0 1px 4px rgba(0,0,0,.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; min-height: 100vh; }
+
+    /* ── Header ── */
+    .hero {
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 60%, #a855f7 100%);
+      color: #fff; padding: 48px 24px 36px; text-align: center;
+    }
+    .hero h1 { font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 800; letter-spacing: -0.5px; }
+    .hero p { margin-top: 8px; opacity: .85; font-size: .95rem; }
+    .hero .updated { margin-top: 10px; font-size: .8rem; opacity: .65; }
+
+    /* ── Controls ── */
+    .controls {
+      max-width: 960px; margin: -24px auto 0; padding: 0 16px;
+      display: flex; flex-wrap: wrap; gap: 12px; position: relative; z-index: 10;
+    }
+    .search-wrap { flex: 1 1 280px; position: relative; }
+    .search-wrap svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+    #search { width: 100%; padding: 12px 14px 12px 38px; border: 1.5px solid var(--border);
+      border-radius: var(--radius); font-size: .9rem; background: #fff;
+      box-shadow: var(--shadow); outline: none; transition: border-color .2s; }
+    #search:focus { border-color: var(--primary); }
+
+    select {
+      padding: 12px 14px; border: 1.5px solid var(--border); border-radius: var(--radius);
+      font-size: .88rem; background: #fff; box-shadow: var(--shadow);
+      cursor: pointer; outline: none; transition: border-color .2s; color: var(--text);
+    }
+    select:focus { border-color: var(--primary); }
+
+    /* ── Stats bar ── */
+    .stats-bar {
+      max-width: 960px; margin: 16px auto 0; padding: 0 16px;
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+    }
+    .stats-bar span { font-size: .83rem; color: var(--muted); }
+    #count-label { font-weight: 600; color: var(--text); }
+
+    /* ── Grid ── */
+    #grid {
+      max-width: 960px; margin: 16px auto 48px; padding: 0 16px;
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--card); border-radius: var(--radius); padding: 20px;
+      box-shadow: var(--shadow); border: 1.5px solid var(--border);
+      display: flex; flex-direction: column; gap: 10px;
+      transition: box-shadow .2s, transform .2s;
+    }
+    .card:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); }
+
+    .card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+    .card-date { font-size: .72rem; color: var(--muted); white-space: nowrap; padding-top: 2px; }
+
+    .card-title { font-size: .92rem; font-weight: 700; line-height: 1.4; }
+    .card-title a { color: var(--text); text-decoration: none; }
+    .card-title a:hover { color: var(--primary); text-decoration: underline; }
+
+    .card-authors { font-size: .78rem; color: var(--muted); line-height: 1.4; }
+
+    .badges { display: flex; flex-wrap: wrap; gap: 4px; }
+    .badge {
+      font-size: .68rem; font-weight: 600; padding: 2px 7px; border-radius: 99px;
+      background: var(--badge-other); color: var(--badge-other-text);
+    }
+    .badge-csai  { background: var(--badge-ai);    color: var(--badge-ai-text); }
+    .badge-csma  { background: var(--badge-ma);    color: var(--badge-ma-text); }
+    .badge-cslg  { background: var(--badge-lg);    color: var(--badge-lg-text); }
+
+    .abstract { font-size: .82rem; color: #374151; line-height: 1.6; }
+    .abstract .clamp { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+    .abstract .full  { display: none; }
+    .toggle-abstract { background: none; border: none; cursor: pointer; font-size: .75rem;
+      color: var(--primary); padding: 0; margin-top: 2px; font-weight: 600; }
+    .toggle-abstract:hover { text-decoration: underline; }
+
+    .card-footer { margin-top: auto; padding-top: 8px; border-top: 1px solid var(--border); }
+    .card-footer a {
+      font-size: .78rem; font-weight: 600; color: var(--primary);
+      text-decoration: none; display: inline-flex; align-items: center; gap: 4px;
+    }
+    .card-footer a:hover { text-decoration: underline; }
+
+    /* ── Empty state ── */
+    #empty { display: none; text-align: center; padding: 64px 24px; color: var(--muted); }
+    #empty svg { margin: 0 auto 16px; display: block; opacity: .4; }
+    #empty h3 { font-size: 1.1rem; margin-bottom: 6px; color: var(--text); }
+
+    /* ── Footer ── */
+    footer { text-align: center; padding: 24px; font-size: .78rem; color: var(--muted); }
+    footer a { color: var(--primary); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 520px) {
+      .hero { padding: 36px 16px 28px; }
+      #grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>🤖 AI Agents — Daily arXiv</h1>
+  <p>Newest papers on AI agents from cs.AI · cs.MA · cs.LG</p>
+  <div class="updated">Last updated: March 16, 2026 at 17:35 UTC</div>
+</div>
+
+<div class="controls">
+  <div class="search-wrap">
+    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+    </svg>
+    <input id="search" type="text" placeholder="Filter by keyword, title, author…" autocomplete="off" />
+  </div>
+  <select id="date-filter">
+    <option value="today">Today</option>
+    <option value="7">Last 7 days</option>
+    <option value="30">Last 30 days</option>
+    <option value="all" selected>All time</option>
+  </select>
+  <select id="sort-filter">
+    <option value="newest" selected>Newest first</option>
+    <option value="oldest">Oldest first</option>
+  </select>
+</div>
+
+<div class="stats-bar">
+  <span><span id="count-label">0</span> papers shown</span>
+  <span>Today: 2026-03-16</span>
+</div>
+
+<div id="grid"></div>
+<div id="empty">
+  <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+  </svg>
+  <h3>No papers match your filters</h3>
+  <p>Try a different keyword or date range</p>
+</div>
+
+<footer>
+  Data sourced from <a href="https://arxiv.org" target="_blank">arXiv.org</a> ·
+  Updated daily via GitHub Actions ·
+  <a href="data/papers.csv" download>Download CSV</a>
+</footer>
+
+<script>
+const ALL_PAPERS = [];
+const TODAY = "2026-03-16";
+
+function dateCutoff(filterVal) {
+  if (filterVal === "all") return null;
+  if (filterVal === "today") return TODAY;
+  const d = new Date();
+  d.setDate(d.getDate() - parseInt(filterVal));
+  return d.toISOString().slice(0, 10);
+}
+
+function badgeClass(cat) {
+  if (cat.includes("cs.AI")) return "badge-csai";
+  if (cat.includes("cs.MA")) return "badge-csma";
+  if (cat.includes("cs.LG")) return "badge-cslg";
+  return "";
+}
+
+function renderCard(p, idx) {
+  const cats = p.categories.split(", ").slice(0, 4);
+  const badges = cats.map(c =>
+    `<span class="badge ${badgeClass(c)}">${c}</span>`
+  ).join("");
+
+  const abstractId = `abs-${idx}`;
+  return `
+  <div class="card" data-title="${p.title.toLowerCase()}" data-abstract="${p.abstract.toLowerCase()}" data-authors="${p.authors.toLowerCase()}">
+    <div class="card-header">
+      <div class="card-title"><a href="${p.url}" target="_blank" rel="noopener">${p.title}</a></div>
+      <div class="card-date">${p.published}</div>
+    </div>
+    <div class="card-authors">${p.authors}</div>
+    <div class="badges">${badges}</div>
+    <div class="abstract" id="${abstractId}">
+      <div class="clamp">${p.abstract}</div>
+      <div class="full">${p.abstract}</div>
+    </div>
+    <button class="toggle-abstract" onclick="toggleAbstract('${abstractId}', this)">Show more</button>
+    <div class="card-footer">
+      <a href="${p.url}" target="_blank" rel="noopener">
+        View on arXiv
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+        </svg>
+      </a>
+    </div>
+  </div>`;
+}
+
+function toggleAbstract(id, btn) {
+  const el = document.getElementById(id);
+  const clamp = el.querySelector(".clamp");
+  const full  = el.querySelector(".full");
+  const expanded = full.style.display === "block";
+  clamp.style.display = expanded ? "-webkit-box" : "none";
+  full.style.display  = expanded ? "none" : "block";
+  btn.textContent     = expanded ? "Show more" : "Show less";
+}
+
+function render() {
+  const query   = document.getElementById("search").value.trim().toLowerCase();
+  const dateF   = document.getElementById("date-filter").value;
+  const sortF   = document.getElementById("sort-filter").value;
+  const cutoff  = dateCutoff(dateF);
+
+  let papers = ALL_PAPERS.filter(p => {
+    if (cutoff && p.published < cutoff) return false;
+    if (dateF === "today" && p.published !== TODAY) return false;
+    if (query) {
+      return p.title.toLowerCase().includes(query) ||
+             p.abstract.toLowerCase().includes(query) ||
+             p.authors.toLowerCase().includes(query);
+    }
+    return true;
+  });
+
+  if (sortF === "oldest") papers = [...papers].reverse();
+
+  const grid  = document.getElementById("grid");
+  const empty = document.getElementById("empty");
+  document.getElementById("count-label").textContent = papers.length;
+
+  if (papers.length === 0) {
+    grid.innerHTML = "";
+    empty.style.display = "block";
+  } else {
+    empty.style.display = "none";
+    grid.innerHTML = papers.map((p, i) => renderCard(p, i)).join("");
+  }
+}
+
+document.getElementById("search").addEventListener("input", render);
+document.getElementById("date-filter").addEventListener("change", render);
+document.getElementById("sort-filter").addEventListener("change", render);
+
+// Default: show all time on first load (shows something even if today has no papers yet)
+render();
+</script>
+</body>
+</html>
