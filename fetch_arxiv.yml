@@ -7,8 +7,8 @@ name: Fetch arXiv AI Agents Papers
 #   PST (Nov–Mar):  0 16 * * *  → 8:00 AM PT
 on:
   schedule:
-    - cron: "0 15 * * *"   # 08:00 AM PDT (UTC-7)
-  workflow_dispatch:        # ← allows you to run manually from the Actions tab
+    - cron: "15 17 * * *"   # 10:15 AM PDT (UTC-7)
+  workflow_dispatch:
 
 # ── Permissions ──────────────────────────────────────────────────────────────
 permissions:
